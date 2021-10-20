@@ -1,0 +1,14 @@
+*.mp4
+*.jpg
+*.png
+*.gif
+/images
+/Videos
+/이미지
+/hough.py
+/line.py
+/line_debug.py
+/linecheck_test_back.py
+/LineMange_back.py
+/teamlab1.py
+/upro.py
