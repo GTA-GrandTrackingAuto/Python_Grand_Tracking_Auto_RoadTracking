@@ -1,10 +1,14 @@
 import cv2
 import numpy as np
-import time
 
-def GetLine(frame, HEIGHT, WIDTH, SPEED):
+# 변속 : 0~5
+# 조향 : 0~12
 
-    line_check_height = int(HEIGHT / 9 * 4)
+# return : [변속, 조향]
+
+def GetLine(frame):
+    HEIGHT, WIDTH = frame.shape[:2]
+    line_check_height = int(HEIGHT / 2)
     center_point = (int(WIDTH / 2), 30)
 
     center_speed = (int(WIDTH / 2), 300)
@@ -12,13 +16,17 @@ def GetLine(frame, HEIGHT, WIDTH, SPEED):
     check_contour = [0,0]
 
     frame_center = (int(WIDTH / 2), line_check_height)
-
-    m_cut = frame[line_check_height - 50:line_check_height + 50,0:WIDTH ]
+    m_cut = frame[line_check_height - 50:line_check_height + 50]
     m_hsv = cv2.cvtColor(m_cut, cv2.COLOR_BGR2LAB)
     # 평균
-    lMean = np.array(m_hsv)[:, 2]
-    print(lMean.mean())
+    L, A, B = cv2.split(m_hsv)
     
+    A = np.where(L < 190, A + 10, A)
+    B = np.where(L < 190, B + 10, B)
+    # a = np.where(a < 50, 50, a)
+    m_hsv = cv2.merge((L, A, B))
+    m_cut = cv2.cvtColor(m_hsv, cv2.COLOR_LAB2BGR)
+
     def mouse_event(e, x, y, flags, param):
         if e == cv2.EVENT_FLAG_LBUTTON:
             print(m_hsv[y][x])
@@ -27,29 +35,20 @@ def GetLine(frame, HEIGHT, WIDTH, SPEED):
     # HSV: (102, 28, 145)# Lab : (148, 120, 114)
     # HSV: (170, 41, 255)# Lab : (255, 142, 133)
 
-    lower_color = (168, 113, 0)# HSV: (0, 0, 165)# Lab : (148, 120, 114)
-    upper_color = (255, 142, 255)# HSV: (255, 78, 255)# Lab : (255, 142, 133)
-
+    lower_color = (0, 120, 117)# HSV: (0, 40, 165)# Lab : (0, 120, 117)
+    upper_color = (255, 140, 136)# HSV: (20, 60, 255)# Lab : (255, 140, 136)
     m_range = cv2.inRange(m_hsv, lower_color, upper_color)
     m_result = cv2.bitwise_and(m_cut, m_cut, mask=m_range)
 
-    # lines = cv2.HoughLinesP(m_range,1,np.pi/180,100,minLineLength=100,maxLineGap=10)
-
-    # for line in lines:
-    #     x1,y1,x2,y2 = line[0]
-    #     cv2.line(m_result, (x1,y1),(x2,y2),(0,255,0),2)
-    # print
-
     contours, _ = cv2.findContours(m_range, cv2.RETR_EXTERNAL, \
-                                                cv2.CHAIN_APPROX_NONE)
+                                                cv2.CHAIN_APPROX_SIMPLE)
+
     check_contour = [0, 0]
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
+        
         if w > 10 and h > 10 and y == 0:
-            # if y == 0:
-                # print('cnt :', x, y)
             cv2.rectangle(m_result, (x, y), (x + w, y + h), (255, 0, 0), 3)
-
             if (x > WIDTH / 2):
                 if check_contour[1] == 0:
                     check_contour[1] = x
@@ -75,38 +74,34 @@ def GetLine(frame, HEIGHT, WIDTH, SPEED):
     # 중심제어
     text = 'on line'
     speed = 'speed up'
-    return_speed = SPEED
     tf = False
+    movementPersent = 0
+    # 왼쪽 보고있음
     if center_point[0] > got_center:
         for i in range(15):
             if center_point[0] - got_center < 30 * i:
                 if i > 1:
                     text = 'go left - ' + str(i) + '%'
                     speed = 'speed down ' + str(i) + 'km/s'
-                    if SPEED > 100 - i * 5:
-                        return_speed -= i * 5
-                        tf = True
-
-                    # print('go left -', str(i) + '%')
+                    movementPersent = i
                     break
-    elif center_point[0] < got_center:
+    elif center_point[0] < got_center: # 오른쪽 보고있음
         for i in range(15):
             if got_center - center_point[0] < 30 * i:
                 if i > 1:
                     text = 'go right - ' + str(i) + '%'
                     speed = 'speed down ' + str(i) + 'km/s'
-                    if SPEED > 100 - i * 5:
-                        return_speed -= i * 5
-                        tf = True
-                    # print('go right -',str(i) + '%')
+                    movementPersent = i
                     break
-
+    
     cv2.putText(frame, text, center_point, cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3, cv2.LINE_AA)
     if tf != True:
         speed = 'good speed'
     cv2.putText(frame, speed, center_speed, cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3, cv2.LINE_AA)
+    movementPersent = round((movementPersent / 30) * 12)
+
     cv2.imshow('img', m_result)
     cv2.imshow('img2', m_hsv)
-    cv2.imshow('full screen', frame)
+    cv2.imshow('img3', frame)
 
-    return return_speed
+    return (1, movementPersent)
