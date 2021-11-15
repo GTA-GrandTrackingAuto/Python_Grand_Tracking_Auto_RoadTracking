@@ -5,6 +5,7 @@
 /images
 /Videos
 /이미지
+/gitfiles
 /hough.py
 /line.py
 /line_debug.py
@@ -12,3 +13,6 @@
 /LineMange_back.py
 /teamlab1.py
 /upro.py
+/hup.py
+/output.py
+/linecheck_test.py

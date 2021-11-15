@@ -3,11 +3,11 @@ import numpy as np
 import hup
 import LineManage
 import time
-from os import listdir
+from os import listdir 
 from os.path import isfile, join
-
+  
 cv2.namedWindow('img')
-mypath = 'images/curve'
+mypath = 'images/straight'
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 images = np.empty(len(onlyfiles), dtype=object)
 for n in range(0, len(onlyfiles)):
