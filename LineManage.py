@@ -8,7 +8,7 @@ import numpy as np
 
 def GetLine(frame):
     HEIGHT, WIDTH = frame.shape[:2]
-    line_check_height = int(HEIGHT / 2)
+    line_check_height = int(HEIGHT / 9 * 7)
     center_point = (int(WIDTH / 2), 30)
 
     center_speed = (int(WIDTH / 2), 300)
@@ -32,41 +32,56 @@ def GetLine(frame):
 
     def mouse_event(e, x, y, flags, param):
         if e == cv2.EVENT_FLAG_LBUTTON:
-            print(m_result_gray[y][x])
+            print(m_hsv[y][x])
 
     cv2.setMouseCallback("img", mouse_event, m_hsv)
     # HSV: (102, 28, 145)# Lab : (148, 120, 114)
     # HSV: (170, 41, 255)# Lab : (255, 142, 133)
 
     lower_color = (0, 117, 117)# HSV: (0, 40, 165)# Lab : (0, 120, 117)
-    upper_color = (255, 143, 139)# HSV: (20, 60, 255)# Lab : (255, 140, 136)
+    upper_color = (255, 143, 142)# HSV: (20, 60, 255)# Lab : (255, 140, 136)
 
     m_range = cv2.inRange(m_hsv, lower_color, upper_color)
     m_result = cv2.bitwise_and(m_cut, m_cut, mask=m_range)
     check_contour = [0, 0]
     # 외곽선 검출 -------------------------
-    m_result_gray = cv2.cvtColor(m_result, cv2.COLOR_BGR2GRAY)
+    m_result_gray = cv2.cvtColor(m_cut, cv2.COLOR_BGR2GRAY)
     m_result_canny = cv2.Canny(m_result_gray, 200, 255)
     m_leftROI = m_result_canny[:len(m_result_canny), :WIDTH // 2]
     m_rightROI = m_result_canny[:len(m_result_canny), WIDTH // 2:]
-    leftLines = cv2.HoughLinesP(m_leftROI, 0.8, np.pi / 180, 90, minLineLength=50, maxLineGap=50)
-    rightLines = cv2.HoughLinesP(m_rightROI, 0.8, np.pi / 180, 90, minLineLength=50, maxLineGap=50)
+    leftLines = cv2.HoughLinesP(m_leftROI, 0.8, np.pi / 180, 90, minLineLength=50, maxLineGap=100)
+    rightLines = cv2.HoughLinesP(m_rightROI, 0.8, np.pi / 180, 90, minLineLength=50, maxLineGap=100)
     
+    if type(rightLines) == np.ndarray:
+        rightLines = sorted(rightLines, key=lambda x: x[0][0] + abs(x[0][1] - x[0][3]), reverse=True)
+        rightIMG = rightLines.pop()
+        check_contour[1] = WIDTH // 2 + rightIMG[0][0]
+        Atwo = rightIMG[0][:2]
+        Btwo = rightIMG[0][2:4]
+
+        if not Atwo[1] - Btwo[1] == 0:
+            rightAngle = (Atwo[0] - Btwo[0]) / (Atwo[1] - Btwo[1])
+            rightBBB = Atwo[0] - rightAngle * Atwo[1]
+            cv2.circle(m_cut, (WIDTH // 2 + rightIMG[0][0], 50), 3, (255, 0, 0), 10)
+            cv2.line(m_cut, (WIDTH // 2 + int(rightBBB), 0), (WIDTH // 2 + rightIMG[0][2], rightIMG[0][3]), (0, 0, 255), 5)
+        
     if type(leftLines) == np.ndarray: 
         leftLines = sorted(leftLines, key=lambda x: x[0][2] + abs(x[0][1] - x[0][3]))
-        rightLines = sorted(rightLines, key=lambda x: x[0][0] + abs(x[0][1] - x[0][3]), reverse=True)
 
         leftIMG = leftLines.pop()
-        rightIMG = rightLines.pop()
         # 왼쪽 점 (leftIMG[0][2], 50)
         # 오른쪽 점 (WIDTH // 2 + rightIMG[0][0], 50)
         check_contour[0] = leftIMG[0][2]
-        check_contour[1] = WIDTH // 2 + rightIMG[0][0]
 
-        cv2.circle(m_cut, (leftIMG[0][2], 50), 3, (255, 0, 0), 10)
-        cv2.circle(m_cut, (WIDTH // 2 + rightIMG[0][0], 50), 3, (255, 0, 0), 10)
-        cv2.line(m_cut, (leftIMG[0][0], leftIMG[0][1]), (leftIMG[0][2], leftIMG[0][3]), (0, 0, 255), 5)
-        cv2.line(m_cut, (WIDTH // 2 + rightIMG[0][0], rightIMG[0][1]), (WIDTH // 2 + rightIMG[0][2], rightIMG[0][3]), (0, 0, 255), 5)
+        #직선의 방정식 활용
+        A = leftIMG[0][:2]
+        B = leftIMG[0][2:4]
+        # 기울기 
+        if not A[1] - B[1] == 0:
+            angle = (A[0] - B[0]) / (A[1] - B[1])
+            BBB = A[0] - angle * A[1]
+            cv2.circle(m_cut, (int(BBB), 50), 3, (255, 0, 0), 10)
+            cv2.line(m_cut, (leftIMG[0][0], leftIMG[0][1]), (int(BBB), 0), (0, 0, 255), 5)
     # 외곽선 검출 --------------------------
 
     got_center = int((check_contour[1] - check_contour[0]) / 2 + check_contour[0])

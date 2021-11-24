@@ -1,13 +1,12 @@
 import cv2
 import numpy as np
-import hup
-import LineManage
-import time
+
+from gitfiles.Autobots  import LineManage # from gitfiles.Autobots 
 from os import listdir 
 from os.path import isfile, join
-  
+    
 cv2.namedWindow('img')
-mypath = 'images/straight'
+mypath = 'images/1'
 onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 images = np.empty(len(onlyfiles), dtype=object)
 for n in range(0, len(onlyfiles)):
